@@ -16,8 +16,12 @@ export interface RunnerOptions {
 export function createRunner(opts: RunnerOptions = {}) {
   const spawn = opts.spawn ?? nodeSpawn;
   const bin = opts.bin ?? process.env['CLAUDE_BIN'] ?? 'claude';
+  // `||` (not `??`) so an empty-string env var falls back to 300; `Number('')`
+  // is 0, which would otherwise produce a 0ms timeout that fires immediately.
+  const envSeconds = Number(process.env['FORTYTWO_TURN_TIMEOUT'] || 300);
+  // Keep `opts.timeoutMs ??` so an explicit `0` from a caller is still respected.
   const timeoutMs =
-    opts.timeoutMs ?? Number(process.env['FORTYTWO_TURN_TIMEOUT'] ?? 300) * 1000;
+    opts.timeoutMs ?? (Number.isFinite(envSeconds) ? envSeconds * 1000 : 300_000);
 
   return (prompt: string, extraArgs: string[] = []): Promise<RunResult> =>
     new Promise((resolve) => {
@@ -36,7 +40,7 @@ export function createRunner(opts: RunnerOptions = {}) {
       child.stdout?.on('data', (d: Buffer) => {
         out += d.toString();
       });
-      child.on('close', (code: number) => {
+      child.on('close', (code: number | null) => {
         clearTimeout(t);
         try {
           const j = JSON.parse(out) as Record<string, unknown>;
