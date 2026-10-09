@@ -1,6 +1,6 @@
 {
   "name": "@justfortytwo/runner",
-  "version": "0.1.0",
+  "version": "1.0.0-0",
   "description": "Thin lifecycle and JSONL transport layer around Claude Code for jobs and persistent sessions.",
   "license": "MIT",
   "author": {
