@@ -1,7 +1,7 @@
 {
   "name": "@justfortytwo/runner",
   "version": "0.1.0",
-  "description": "Thin wrapper around headless `claude -p --output-format json` for use by fortytwo daemons and bridges.",
+  "description": "Thin lifecycle and JSONL transport layer around Claude Code for jobs and persistent sessions.",
   "license": "MIT",
   "author": {
     "name": "Enrico Deleo",
