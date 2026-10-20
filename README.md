@@ -81,6 +81,10 @@ Events:
 | `raw` | Parsed Claude event, or original malformed line |
 | `assistant` | `{ type: 'assistant', text, raw }` for text in assistant messages |
 | `result` | `RunResult` for each Claude result event |
+
+The `event` union also carries `{ type: 'input', raw }` when Claude consumes a
+submitted input (the runner passes `--replay-user-messages`). Inputs sent while a
+turn runs steer that turn, so several inputs can share one `result`.
 | `stderr` | Text chunk |
 | `exit` | `{ type: 'exit', code, signal }`, after output cleanup |
 | `error` | `Error` |

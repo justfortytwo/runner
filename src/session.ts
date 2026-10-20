@@ -11,6 +11,8 @@ export type RunnerEvent =
   | { type: 'raw'; data: unknown }
   | { type: 'assistant'; text: string; raw: unknown }
   | { type: 'result'; result: RunResult; raw: unknown }
+  /** Claude consumed a submitted input; inputs sent mid-turn steer that turn and share its result. */
+  | { type: 'input'; raw: unknown }
   | { type: 'stderr'; text: string }
   | { type: 'exit'; code: number | null; signal: string | null }
   | { type: 'error'; error: Error };
@@ -32,6 +34,8 @@ export class RunnerSession extends EventEmitter<SessionEvents> {
   private exited = false;
   private finished = false;
   private pendingTurns = 0;
+  /** Submitted inputs Claude has consumed (replayed) since the last result. */
+  private consumed = 0;
   private writes: Promise<void> = Promise.resolve();
   private readonly reader: Interface;
   private readonly completion: Promise<void>;
@@ -142,11 +146,17 @@ export class RunnerSession extends EventEmitter<SessionEvents> {
     }
     const event = raw as Record<string, any> | null;
     if (event && typeof event.session_id === 'string') this.id = event.session_id;
+    // Claude replays a submitted input when a turn consumes it; tool results are not inputs.
+    const input = event?.type === 'user' && event.isReplay === true && !(Array.isArray(event.message?.content) && event.message.content.some((block: any) => block?.type === 'tool_result'));
+    if (input) this.consumed++;
     if (event?.type === 'result') {
-      this.pendingTurns = Math.max(0, this.pendingTurns - 1);
+      // Without replays (older Claude), fall back to one input per result.
+      this.pendingTurns = Math.max(0, this.pendingTurns - Math.max(1, this.consumed));
+      this.consumed = 0;
       if (!this.exited && !this.inputError) this.currentState = this.pendingTurns ? 'running' : 'ready';
     }
     this.publish({ type: 'raw', data: raw });
+    if (input) this.publish({ type: 'input', raw });
     if (event?.type === 'assistant' && Array.isArray(event.message?.content)) {
       const text = event.message.content.filter((block: any) => block?.type === 'text' && typeof block.text === 'string').map((block: any) => block.text).join('');
       if (text) this.publish({ type: 'assistant', text, raw });
@@ -160,7 +170,7 @@ export class RunnerSession extends EventEmitter<SessionEvents> {
   private onInputError = (cause: Error): void => {
     if (this.inputError) return;
     this.inputError = new RunnerClosedError(cause);
-    this.pendingTurns = 0;
+    this.pendingTurns = 0; this.consumed = 0;
     if (!this.closing && !this.exited) this.currentState = 'failed';
     this.rejectWrites(this.inputError);
     this.publish({ type: 'error', error: this.inputError });

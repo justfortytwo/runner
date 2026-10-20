@@ -29,7 +29,7 @@ describe('runtime', () => {
     expect(s.sessionId).toBe('resume-id');
     expect(raw.marker).toBe('provider');
     expect(raw.cwd).toBe(process.cwd());
-    expect(raw.args).toEqual(['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--model', 'custom', '--resume', 'resume-id']);
+    expect(raw.args).toEqual(['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--replay-user-messages', '--model', 'custom', '--resume', 'resume-id']);
     expect(s.state).toBe('ready');
   });
   it('serializes concurrent turns and streams normalized events', async () => {
@@ -43,6 +43,21 @@ describe('runtime', () => {
     expect(results).toEqual(['one', 'two\n三', 'three']);
     expect(assistants).toEqual(results);
     expect(s.lastActivityAt).toBeGreaterThanOrEqual(s.startedAt);
+  });
+  it('reports consumed inputs, including steered inputs that share one result', async () => {
+    const s = await start();
+    const events: string[] = [];
+    s.on('event', (e: any) => { if (e.type === 'input' || e.type === 'result') events.push(e.type); });
+    const steered = next(s, 'result');
+    await s.send('hold'); await s.send('hold'); await s.send('steer');
+    await steered;
+    expect(events).toEqual(['input', 'input', 'input', 'result']);
+    expect(s.state).toBe('ready');
+    const plain = next(s, 'result');
+    await s.send('one');
+    await plain;
+    expect(events.slice(4)).toEqual(['input', 'result']);
+    expect(s.state).toBe('ready');
   });
   it('reports malformed lines without losing subsequent events', async () => {
     const s = await start();

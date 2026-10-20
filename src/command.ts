@@ -45,7 +45,7 @@ export function command(options: RuntimeOptions, streaming: boolean, prompt?: st
   if (options.resumeSessionId !== undefined && (!options.resumeSessionId.trim() || options.resumeSessionId.includes('\0'))) {
     throw new TypeError('resumeSessionId must be nonempty and contain no NUL');
   }
-  return ['-p', ...(streaming ? ['--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose'] : ['--output-format', 'json']),
+  return ['-p', ...(streaming ? ['--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--replay-user-messages'] : ['--output-format', 'json']),
     ...args, ...(options.resumeSessionId ? ['--resume', options.resumeSessionId] : []),
     ...(prompt === undefined ? [] : [prompt])];
 }

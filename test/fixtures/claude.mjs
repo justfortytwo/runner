@@ -10,9 +10,19 @@ if (!args.includes('stream-json')) {
 } else {
   emit({ type: 'system', subtype: 'init', session_id, args, marker: process.env.TEST_MARKER, cwd: process.cwd() });
   const lines = createInterface({ input: process.stdin });
+  // Mirrors Claude steering: inputs queued during a turn join it and share one result.
+  const held = [];
+  const replay = text => { if (args.includes('--replay-user-messages')) emit({ type: 'user', isReplay: true, message: { role: 'user', content: text }, session_id }); };
   lines.on('line', line => {
     const input = JSON.parse(line);
     const text = input.message.content;
+    if (text === 'hold') { held.push(text); return; }
+    if (held.length) {
+      for (const queued of held.splice(0)) replay(queued);
+      replay(text);
+      emit({ type: 'result', result: 'steered', is_error: false, session_id });
+      return;
+    }
     if (text === 'fragment') {
       const bytes = Buffer.from(JSON.stringify({ type: 'result', result: 'héllo 三' }) + '\r\n' + JSON.stringify({ type: 'result', result: 'tail' }));
       let i = 0;
@@ -30,6 +40,7 @@ if (!args.includes('stream-json')) {
     if (text === 'bad') process.stdout.write('not json\n');
     if (text === 'stubborn') { process.on('SIGTERM', () => {}); setInterval(() => {}, 1000); }
     process.stderr.write('diagnostic\n');
+    replay(text);
     emit({ type: 'assistant', message: { content: [{ type: 'text', text }] }, session_id });
     emit({ type: 'result', result: text, is_error: false, session_id });
   });
