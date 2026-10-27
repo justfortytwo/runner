@@ -107,9 +107,9 @@ siblings in `../` (gate, memory, persona, salience, scheduler, telegram,
 installer, marketplace, docs, website). Each is its own git repo; edit only
 this one unless asked. Known consumers:
 
-- `../telegram` depends on it via `"file:../runner"` (local path).
-- `../scheduler` depends on `"@justfortytwo/runner": "^0.1.0"`; note this
-  package is now `1.0.0-0`, so API changes may need coordinated updates there.
+- `../telegram` depends on `"@justfortytwo/runner": "1.0.0"` (exact pin).
+- `../scheduler` depends on `"@justfortytwo/runner": "1.0.0"` (exact pin), so
+  API changes need coordinated updates there.
 
 Keep the public API in `src/index.ts` stable or update consumers deliberately.
 
